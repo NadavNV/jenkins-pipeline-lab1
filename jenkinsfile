@@ -3,7 +3,8 @@ pipeline{
     stages{
         stage('cloning'){
             steps{
-                sh "git clone https://github.com/devopsPRO27/movies-api"
+                sh "mkdir movies-api"
+                git branch: 'main', url: 'https://github.com/devopsPRO27/movies-api'
             }
         }
         stage('build'){
