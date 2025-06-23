@@ -1,29 +1,32 @@
 pipeline{
     agent any
+    environment{
+        APP_NAME = "movies-api"
+    }
     stages{
-        stage('cloning'){
+        stage('Clone'){
             steps{
+                echo "====== Cloning movies-api repo ======"
                 sh "mkdir movies-api"
                 dir('movies-api'){
                     git branch: 'main', url: 'https://github.com/devopsPRO27/movies-api'
-                    sh "ls -l"
                 }
-                sh "ls -l"
             }
         }
-        stage('build'){
+        stage('Build'){
             steps{
-                echo "building the app"
+                echo "====== Building the app ======"
+
             }
         }
-        stage('test'){
+        stage('Test'){
             steps{
-                echo "testing the app"
+                echo "====== Testing the app ======"
             }
         }
-        stage('deploy'){
+        stage('Deploy'){
             steps{
-                echo "deploying the app"
+                echo "====== Deploying the app ======"
             }
         }
     }
