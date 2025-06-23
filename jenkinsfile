@@ -1,6 +1,9 @@
 pipeline{
     agent any
     stages{
+        stage('cloning'){
+            sh "git clone https://github.com/devopsPRO27/movies-api"
+        }
         stage('build'){
             steps{
                 echo "building the app"
