@@ -4,7 +4,11 @@ pipeline{
         stage('cloning'){
             steps{
                 sh "mkdir movies-api"
-                git branch: 'main', url: 'https://github.com/devopsPRO27/movies-api'
+                dir('movies-api'){
+                    git branch: 'main', url: 'https://github.com/devopsPRO27/movies-api'
+                    sh "ls -l"
+                }
+                sh "ls -l"
             }
         }
         stage('build'){
