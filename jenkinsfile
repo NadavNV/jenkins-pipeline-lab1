@@ -1,66 +1,19 @@
 pipeline{
     agent any
     stages{
-        stage('Clone'){
-            parallel{
-                stage('Cloning frontend'){
-                    echo "sh 'git clone github.com/peakyblinders/frontend'"
-                }
-                stage('Cloning API'){
-                    echo "sh 'git clone github.com/peakyblinders/api'"
-                }
-                stage('Cloning inventory service'){
-                    echo "sh 'git clone github.com/peakyblinders/inventory'"
-                }
-                stage('Cloning user service'){
-                    echo "sh 'git clone github.com/peakyblinders/user'"
-                }
-                stage('Cloning database'){
-                    echo "sh 'git clone github.com/peakyblinders/database'"
-                }
+        stage('build'){
+            steps{
+                echo "building the app"
             }
         }
-        stage('Check requirements'){
-            parallel{
-                stage('Checking frontend'){
-                    echo "sh 'cd frontend && node --version && npm -v'"
-                }
-                stage('Checking API'){
-                    echo "sh 'cd api && node --version && npm -v'"
-                }
-                stage('Checking inventory service'){
-                    echo "sh 'cd inventory && python3 -version && pip --version && flask --version'"
-                }
-                stage('Checking user service'){
-                    echo "sh 'cd user && java -version && javac -version && spring version'"
-                }
-                stage('Checking database'){
-                    echo "sh 'cd database && pg_config --version'"
-                }
+        stage('test'){
+            steps{
+                echo "testing the app"
             }
         }
-        stage('Build'){
-            parallel{
-                stage('Building frontend'){
-                    echo "cd frontend && node --version && npm -v"
-                }
-                stage('Building API'){
-                    echo "cd api && node --version && npm -v"
-                }
-                stage('Building inventory service'){
-                    echo "cd inventory && python3 -version && pip --version && flask --version"
-                }
-                stage('Building user service'){
-                    echo "cd user && java -version && javac -version && spring version"
-                }
-                stage('Building database'){
-                    echo "cd database && pg_config --version"
-                }
-            }
-        }
-        stage('Test'){
-            parallel{
-
+        stage('deploy'){
+            steps{
+                echo "deploying the app"
             }
         }
     }
