@@ -5,10 +5,11 @@ APP_HOST = ("http://" + os.getenv("APP_HOST")) or "http://localhost"
 APP_PORT = os.getenv("APP_PORT") or "80"
 
 
-def get_movies() -> dict:
+def get_movies() -> list:
     try:
         res = requests.get(f"{APP_HOST}:{APP_PORT}/movie")
         if 200 <= res.status_code < 400:
+            print(res.json())
             return res.json()
         else:
             raise RuntimeError("No movies found")
@@ -32,10 +33,11 @@ def check_movie_addition() -> bool:
     movie = {"name": 'The Princess Bride', 'length': 98, 'genre': 'comedy'}
     try:
         add_movie(movie=movie)
-        for key, value in get_movies().items():
-            if key == 'name':
-                if value == "The Princess Bride":
-                    return True
+        for movie in get_movies():
+            for key, value in movie.items():
+                if key == 'name':
+                    if value == "The Princess Bride":
+                        return True
         return False
     except (requests.ConnectionError, RuntimeError) as e:
         print(e)
