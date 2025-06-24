@@ -22,17 +22,15 @@ pipeline{
                 sh "docker build -f ./movies/Dockerfile -t ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER} ."
                 sh "docker run -d -p 80:80 --rm --name ${MY_NAME}-${APP_NAME} ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}"
                 // Add environment variable for the app's IP
-                sh "export APP_HOST=\$(docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${MY_NAME}-${APP_NAME})"
-                sh "echo \"\$APP_HOST\""
+                sh "export APP_HOST=\$(docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${MY_NAME}-${APP_NAME}) && echo \"\$APP_HOST\""
                 // Add environment variable for the app's port
-                sh "export APP_PORT=80"
-                sh "echo \"\$APP_PORT\""
+                sh "export APP_PORT=80 && echo \"\$APP_PORT\""
             }
         }
         stage('Test'){
             steps{
                 echo "====== Testing the app ======"
-                dir('test'){
+                dir('movies/test'){
                     sh "ls -l"
                     sh "docker build -t ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER} ."
                     sh "docker run --rm --name ${MY_NAME}-${APP_NAME}-test ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
