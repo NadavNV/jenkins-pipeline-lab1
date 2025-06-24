@@ -1,7 +1,7 @@
 import requests
 import os
 
-APP_HOST = os.getenv("APP_HOST") or "http://localhost"
+APP_HOST = ("http://" + os.getenv("APP_HOST")) or "http://localhost"
 APP_PORT = os.getenv("APP_PORT") or "80"
 
 

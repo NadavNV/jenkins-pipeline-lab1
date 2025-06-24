@@ -26,14 +26,12 @@ pipeline{
                 script{
                     app_ip = sh(returnStdout: true, script: "docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${MY_NAME}-${APP_NAME}")
                 }
-                sh "echo ${app_ip}"
             }
         }
         stage('Test'){
             steps{
                 echo "====== Testing the app ======"
                 dir('movies/test'){
-                    sh "ls -l"
                     sh """
                         export APP_HOST=${app_ip}
                         export APP_PORT=80
@@ -64,7 +62,6 @@ pipeline{
             sh "rm -fr *"
             // Remove the app container
             sh "docker stop ${MY_NAME}-${APP_NAME} || true"
-            sh "docker rm ${MY_NAME}-${APP_NAME} || true"
             // Remove images
             sh "docker rmi -f `docker image ls | egrep \"^nadav\" | awk '{print\$3}'`"
         }
