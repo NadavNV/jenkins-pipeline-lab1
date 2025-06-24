@@ -31,7 +31,7 @@ pipeline{
                 echo "====== Testing the app ======"
                 dir('test'){
                     sh "docker build -t ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER} ."
-                    sh "docker run --name ${MY_NAME}/${APP_NAME}-test ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
+                    sh "docker run --name ${MY_NAME}-${APP_NAME}-test ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
                 }
             }
             post{
@@ -50,6 +50,8 @@ pipeline{
     post{
         always{
             sh "rm -fr *"
+            sh "docker rmi a895414c41b7 16b1fffcf316"
+            sh "docker rmi `docker image ls | egrep \"^nadav\" | awk '{print\$3}'"
             sh "docker images"
         }
     }
