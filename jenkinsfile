@@ -54,18 +54,19 @@ pipeline{
             steps{
                 echo "====== Deploying the app ======"
                 withCredentials([usernamePassword(credentialsId: 'nadav-dockerhub-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-                    sh """
+                    sh '''
                         docker logout
-                        docker login -u ${USER} -p ${PASS}
-                        docker push ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}
-                        docker logout
-                    """
+                        echo $PASS | docker login -u $USER --password-stdin
+                        docker image tag $MY_NAME/$APP_NAME:V1.$BUILD_NUMBER $USER/$APP_NAME:V1.$BUILD_NUMBER
+                        docker push $MY_NAME/$APP_NAME:V1.$BUILD_NUMBER
+                    '''
                 }
             }
         }
     }
     post{
         always{
+            sh "docker logout"
             // Clean up workspace
             sh "rm -fr *"
             // Remove the app container
