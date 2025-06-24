@@ -34,12 +34,13 @@ pipeline{
                     sh "docker run --name ${MY_NAME}/${APP_NAME}-test ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
                 }
             }
-        }
-        post{
-            always{
-                sh "docker rm -f ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
+            post{
+                always{
+                    sh "docker rm -f ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
+                }
             }
         }
+        
         stage('Deploy'){
             steps{
                 echo "====== Deploying the app ======"
