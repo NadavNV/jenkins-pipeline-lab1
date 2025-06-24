@@ -58,7 +58,7 @@ pipeline{
                         docker logout
                         echo $PASS | docker login -u $USER --password-stdin
                         docker image tag $MY_NAME/$APP_NAME:V1.$BUILD_NUMBER $USER/$APP_NAME:V1.$BUILD_NUMBER
-                        docker push $MY_NAME/$APP_NAME:V1.$BUILD_NUMBER
+                        docker push $USER/$APP_NAME:V1.$BUILD_NUMBER
                     '''
                 }
             }
