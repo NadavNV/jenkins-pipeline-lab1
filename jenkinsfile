@@ -50,7 +50,7 @@ pipeline{
     post{
         always{
             sh "rm -fr *"
-            sh "docker stop 13860f8588a683c26557542f08ed30bded987819e0b5b6ea457bd65f175f0c03"
+            sh "docker stop ${MY_NAME}-${APP_NAME}"
             sh "docker images"
             sh "docker rmi -f `docker image ls | egrep \"^nadav\" | awk '{print\$3}'`"
             sh "docker images"
