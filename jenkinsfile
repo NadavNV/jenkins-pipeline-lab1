@@ -56,8 +56,9 @@ pipeline{
                 withCredentials([usernamePassword(credentialsId: 'nadav-dockerhub-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
                     sh """
                         docker logout
-                        docker login
+                        docker login -u ${USER} -p ${PASS}
                         docker push ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}
+                        docker logout
                     """
                 }
             }
