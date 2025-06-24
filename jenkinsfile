@@ -23,7 +23,7 @@ pipeline{
                 sh "docker run -d -p 80:80 --rm --name ${MY_NAME}-${APP_NAME} ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}"
                 // Add environment variable for the app's IP
                 sh "export APP_HOST=\$(docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${MY_NAME}-${APP_NAME})"
-                sh "printenv APP_HOST"
+                sh "echo \"\$APP_HOST\""
                 // Add environment variable for the app's port
                 sh "export APP_PORT=80"
             }
