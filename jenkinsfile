@@ -55,6 +55,7 @@ pipeline{
                 echo "====== Deploying the app ======"
                 withCredentials([usernamePassword(credentialsId: 'nadav-dockerhub-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
                     sh """
+                        docker logout
                         docker login
                         docker push ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}
                     """
