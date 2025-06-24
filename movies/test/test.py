@@ -1,12 +1,13 @@
 import requests
 import os
 
-APP_URL = os.getenv("APP_URL") or "http://localhost:80"
+APP_HOST = os.getenv("APP_URL") or "http://localhost"
+APP_PORT = os.getenv("APP_PORT") or "80"
 
 
 def get_movies() -> dict:
     try:
-        res = requests.get(APP_URL + "/movie")
+        res = requests.get(f"{APP_HOST}:{APP_PORT}/movie")
         if 200 <= res.status_code < 400:
             return res.json()
         else:
@@ -18,7 +19,7 @@ def get_movies() -> dict:
 
 def add_movie(movie: dict) -> None:
     try:
-        res = requests.post(APP_URL + "/movie", json=movie)
+        res = requests.post(url=f"{APP_HOST}:{APP_PORT}/movie", json=movie)
         if 200 <= res.status_code < 400:
             return
         else:
