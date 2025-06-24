@@ -16,7 +16,7 @@ pipeline{
         stage('Build'){
             steps{
                 echo "====== Building the app ======"
-                sh "docker build -f ./movies/Dockerfile -t ${APP_NAME}:V1.${BUILD_NUMBER}"
+                sh "docker build -f ./movies/Dockerfile -t ${APP_NAME}:V1.${BUILD_NUMBER} ."
                 sh "docker images"
             }
         }
