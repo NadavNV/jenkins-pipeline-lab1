@@ -9,13 +9,12 @@ def get_movies() -> list:
     try:
         res = requests.get(f"{APP_HOST}:{APP_PORT}/movie")
         if 200 <= res.status_code < 400:
-            print(res.json())
             return res.json()
         else:
             raise RuntimeError("No movies found")
     except (requests.ConnectionError, RuntimeError) as e:
         print(e)
-        return {}
+        return []
 
 
 def add_movie(movie: dict) -> None:
