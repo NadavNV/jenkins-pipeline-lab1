@@ -24,7 +24,7 @@ pipeline{
                 sh "docker run -d -p 80:80 --rm --name ${MY_NAME}-${APP_NAME} ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}"
                 // Add variable for the app's IP
                 script{
-                    app_ip = sh(returnStdout: true, script: "docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${MY_NAME}-${APP_NAME})")
+                    app_ip = sh(returnStdout: true, script: "docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${MY_NAME}-${APP_NAME}")
                 }
                 sh "echo ${app_ip}"
             }
