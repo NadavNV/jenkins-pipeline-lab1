@@ -18,10 +18,9 @@ pipeline{
             steps{
                 echo "====== Building the app ======"
                 // Make sure that the container name is available
-                sh "docker stop ${MY_NAME}-${APP_NAME}"
-                sh "docker rm ${MY_NAME}-${APP_NAME}"
+                sh "docker stop ${MY_NAME}-${APP_NAME} || true"
                 sh "docker build -f ./movies/Dockerfile -t ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER} ."
-                sh "docker run -d -p 80:80 --name ${MY_NAME}-${APP_NAME} ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}"
+                sh "docker run -d -p 80:80 --rm --name ${MY_NAME}-${APP_NAME} ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}"
                 // Add environment variable for the app's IP
                 sh "export APP_HOST=\$(docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${MY_NAME}-${APP_NAME})"
                 sh "printenv APP_HOST"
@@ -34,15 +33,15 @@ pipeline{
                 echo "====== Testing the app ======"
                 dir('test'){
                     sh "docker build -t ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER} ."
-                    sh "docker run --name ${MY_NAME}-${APP_NAME}-test ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
+                    sh "docker run --rm --name ${MY_NAME}-${APP_NAME}-test ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
                 }
             }
             post{
                 always{
                     // Remove the testing container
-                    sh "docker rm ${MY_NAME}-${APP_NAME}-test"
+                    sh "docker rm ${MY_NAME}-${APP_NAME}-test || true"
                     // Remove the test image
-                    sh "docker rm -f ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}"
+                    sh "docker rm -f ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER} || true"
                 }
             }
         }
@@ -58,8 +57,8 @@ pipeline{
             // Clean up workspace
             sh "rm -fr *"
             // Remove the app container
-            sh "docker stop ${MY_NAME}-${APP_NAME}"
-            sh "docker rm ${MY_NAME}-${APP_NAME}"
+            sh "docker stop ${MY_NAME}-${APP_NAME} || true"
+            sh "docker rm ${MY_NAME}-${APP_NAME} || true"
             // Remove images
             sh "docker rmi -f `docker image ls | egrep \"^nadav\" | awk '{print\$3}'`"
         }
