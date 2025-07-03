@@ -158,7 +158,6 @@ pipeline{
     }
     post{
         always{
-            sh "docker logout"
             // Clean up workspace
             sh "rm -fr *"
             // Remove the containers
@@ -166,7 +165,8 @@ pipeline{
             sh "docker stop ${FRONTEND} || true"
             sh "docker stop ${SIMULATOR} || true"
             // Remove images
-            sh "docker rmi -f `docker image ls | egrep \"^nadav\" | awk '{print\$3}'`"
+            sh "docker rmi -f `docker image ls | egrep \"^nadav\" | awk '{print\$3}'` || true"
+            sh "docker logout || true"
         }
     }
 }
