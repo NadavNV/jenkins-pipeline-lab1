@@ -9,60 +9,65 @@ pipeline{
     stages{
         stage('Clone'){
             parallel {
-                steps{
-                    echo "====== Cloning backend repo ======"
-                    sh "mkdir SmartHomeBackend"
-                    dir('SmartHomeBackend'){
-                        git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeBackend'
+                stage("Cloning backend"){
+                    steps{
+                        echo "====== Cloning backend repo ======"
+                        sh "mkdir SmartHomeBackend"
+                        dir('SmartHomeBackend'){
+                            git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeBackend'
+                        }
                     }
                 }
-                steps{
-                    echo "====== Cloning frontend repo ======"
-                    sh "mkdir SmartHomeDashboard"
-                    dir('SmartHomeDashboard'){
-                        git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeDashboard'
+                stage("Cloning frontend"){
+                    steps{
+                        echo "====== Cloning frontend repo ======"
+                        sh "mkdir SmartHomeDashboard"
+                        dir('SmartHomeDashboard'){
+                            git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeDashboard'
+                        }
                     }
                 }
-                steps{
-                    echo "====== Cloning simulator repo ======"
-                    sh "mkdir SmartHomeSimulator"
-                    dir('SmartHomeSimulator'){
-                        git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeSimulator'
+                stage("Cloning simulator"){
+                    steps{
+                        echo "====== Cloning simulator repo ======"
+                        sh "mkdir SmartHomeSimulator"
+                        dir('SmartHomeSimulator'){
+                            git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeSimulator'
+                        }
                     }
                 }
-                // steps{
-                //     echo "====== Cloning config repo ======"
-                //     sh "mkdir SmartHomeConfig"
-                //     dir('SmartHomeBackend'){
-                //         git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeConfig'
-                //     }
-                // }
             }
         }
         stage('Build'){
             parallel{
-                steps{
-                    echo "====== Building the backend ======"
-                    // Make sure that the container name is available
-                    sh "docker stop ${BACKEND} || true"
-                    dir('SmartHomeBackend'){
-                        sh "docker build -t ${DOCKER_USERNAME}/${BACKEND}:V1.${BUILD_NUMBER} ."
+                stage("Buidling backend"){
+                    steps{
+                        echo "====== Building the backend ======"
+                        // Make sure that the container name is available
+                        sh "docker stop ${BACKEND} || true"
+                        dir('SmartHomeBackend'){
+                            sh "docker build -t ${DOCKER_USERNAME}/${BACKEND}:V1.${BUILD_NUMBER} ."
+                        }
                     }
                 }
-                steps{
-                    echo "====== Building the frontend ======"
-                    // Make sure that the container name is available
-                    sh "docker stop ${FRONTEND} || true"
-                    dir('SmartHomeFrontend'){
-                        sh "docker build -t ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
+                stage("Building frontend"){
+                    steps{
+                        echo "====== Building the frontend ======"
+                        // Make sure that the container name is available
+                        sh "docker stop ${FRONTEND} || true"
+                        dir('SmartHomeFrontend'){
+                            sh "docker build -t ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
+                        }
                     }
                 }
-                steps{
-                    echo "====== Building the simulator ======"
-                    // Make sure that the container name is available
-                    sh "docker stop ${SIMULATOR} || true"
-                    dir('SmartHomeSimulator'){
-                        sh "docker build -t ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER} ."
+                stage("Building simulator"){
+                    steps{
+                        echo "====== Building the simulator ======"
+                        // Make sure that the container name is available
+                        sh "docker stop ${SIMULATOR} || true"
+                        dir('SmartHomeSimulator'){
+                            sh "docker build -t ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER} ."
+                        }
                     }
                 }
             }
@@ -124,23 +129,29 @@ pipeline{
         }
         stage('Deploy'){
             parallel{
-                steps{
-                    echo "====== Deploying the backend ======"
-                    sh "docker image tag ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${BACKEND}:latest"
-                    sh "docker push ${DOCKER_USERNAME}/${BACKEND}:latest"
-                    sh "docker push ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER"
+                stage("Deploying backend"){
+                    steps{
+                        echo "====== Deploying the backend ======"
+                        sh "docker image tag ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${BACKEND}:latest"
+                        sh "docker push ${DOCKER_USERNAME}/${BACKEND}:latest"
+                        sh "docker push ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER"
+                    }
                 }
-                steps{
-                    echo "====== Deploying the frontend ======"
-                    sh "docker image tag ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${FRONTEND}:latest"
-                    sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:latest"
-                    sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
+                stage("Deploying frontend"){
+                    steps{
+                        echo "====== Deploying the frontend ======"
+                        sh "docker image tag ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${FRONTEND}:latest"
+                        sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:latest"
+                        sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
+                    }
                 }
-                steps{
-                    echo "====== Deploying the simulator ======"
-                    sh "docker image tag ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${SIMULATOR}:latest"
-                    sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:latest"
-                    sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER"
+                stage("Deploying simulator"){
+                    steps{
+                        echo "====== Deploying the simulator ======"
+                        sh "docker image tag ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${SIMULATOR}:latest"
+                        sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:latest"
+                        sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER"
+                    }
                 }
             }
         }
