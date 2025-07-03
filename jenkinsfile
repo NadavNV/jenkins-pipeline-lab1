@@ -80,29 +80,28 @@ pipeline{
         stage('Test'){
             steps{
                 echo "====== Testing the app ======"
-                sh "docker network create test-net || true"
                 echo "====== Running the backend ======"
                 withCredentials([usernamePassword(credentialsId: 'mongo-credentials', passwordVariable: 'MONGO_PASS', usernameVariable: 'MONGO_USER')]) {
                     sh """
                     docker run -d -p 5200:5200 -e \"MONGO_USER=${MONGO_USER}\" -e \"MONGO_PASS=${MONGO_PASS}\" \
-                    --rm --network test-net --name test-container ${DOCKER_USERNAME}/${BACKEND}:V1.${BUILD_NUMBER}
+                    --rm --network host --name test-container ${DOCKER_USERNAME}/${BACKEND}:V1.${BUILD_NUMBER}
                     """
                 }
                 echo "====== Testing the backend ======"
                 sh "sleep 20"
-                sh "curl http://test-container:5200/ready"
+                sh "curl http://localhost:5200/ready"
                 echo "====== Running the simulator ======"
                 sh """
-                docker run -d -e \"API_URL=http://test-container:5200\" \
-                --rm --network test-net --name ${SIMULATOR} ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER}
+                docker run -d -e \"API_URL=http://localhost:5200\" \
+                --rm --network host --name ${SIMULATOR} ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER}
                 """
                 echo "====== Testing the simulator ======"
                 sh "sleep 20"
                 sh "docker exec ${SIMULATOR} cat status | grep ready"
                 echo "====== Running the frontend ======"
                 sh """
-                docker run -d -e \"VITE_API_URL=http://test-container:5200\" \
-                --rm --network test-net --name ${FRONTEND} ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}
+                docker run -d -e \"VITE_API_URL=http://localhost:5200\" \
+                --rm --network host --name ${FRONTEND} ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}
                 """
                 echo "====== Testing the frontend ======"
                 sh "sleep 20"
@@ -113,7 +112,6 @@ pipeline{
                     sh "docker rm -f test-container || true"
                     sh "docker rm -f ${SIMULATOR} || true"
                     sh "docker rm -f ${FRONTEND} || true"
-                    sh "docker network rm test-net || true"
                 }
             }
         }
