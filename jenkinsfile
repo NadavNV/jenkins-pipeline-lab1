@@ -92,11 +92,7 @@ pipeline{
                 sh "docker logs test-container || true"
                 sh "docker ps -a"
                 echo "====== Testing the backend ======"
-                sh """
-                for i in {1..10}; do \
-                    curl http://localhost:5200/ready && break || sleep 5 \
-                done
-                """
+                sh "for i in {1..10}; do curl http://localhost:5200/ready && break || sleep 5 done"
                 echo "====== Running the simulator ======"
                 sh """
                 docker run -d -e \"API_URL=http://test-container:5200\" \
@@ -106,11 +102,7 @@ pipeline{
                 sh "docker logs ${SIMULATOR} || true"
                 sh "docker ps -a"
                 echo "====== Testing the simulator ======"
-                sh """
-                for i in {1..10}; do \
-                    docker exec ${SIMULATOR} cat status | grep ready && break || sleep 5 \
-                done
-                """
+                sh "for i in {1..10}; do docker exec ${SIMULATOR} cat status | grep ready && break || sleep 5 done"
                 echo "====== Running the frontend ======"
                 sh """
                 docker run -d -e \"VITE_API_URL=http://test-container:5200\" \
@@ -120,11 +112,7 @@ pipeline{
                 sh "docker logs ${FRONTEND} || true"
                 sh "docker ps -a"
                 echo "====== Testing the frontend ======"
-                sh """
-                for i in {1..10}; do \
-                    docker exec ${SIMULATOR} curl http://${FRONTEND}:3001 | grep \"Data\" && break || sleep 5 \
-                done
-                """
+                sh "for i in {1..10}; do docker exec ${SIMULATOR} curl http://${FRONTEND}:3001 | grep \"Data\" && break || sleep 5 done"
             }
             post{
                 always{
