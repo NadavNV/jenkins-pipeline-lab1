@@ -8,7 +8,9 @@ pipeline{
     }
     stages{
         stage("Test docker") {
-            sh "docker ps"
+            steps{
+                sh "docker ps"
+            }
         }
         stage('Clone'){
             parallel {
