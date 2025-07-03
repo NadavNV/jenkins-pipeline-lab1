@@ -60,7 +60,7 @@ pipeline{
                         echo "====== Building the frontend ======"
                         // Make sure that the container name is available
                         sh "docker stop ${FRONTEND} || true"
-                        dir('SmartHomeFrontend'){
+                        dir('SmartHomeDashboard'){
                             sh "docker build -t ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
                         }
                     }
