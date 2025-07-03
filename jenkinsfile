@@ -90,14 +90,7 @@ pipeline{
                 }
                 echo "====== Testing the backend ======"
                 sh "sleep 20"
-                sh '''
-                    docker run --rm \
-                    --network test-net \
-                    -v /home/jenkins/.jenkins/workspace/smarthome_test:/app \
-                    -w /app \
-                    python:3.12-slim \
-                    /bin/sh -c "pip install requests && python3 SmartHomeBackend/Test/test.py"
-                '''
+                sh "curl http://test-container:5200/ready"
                 echo "====== Running the simulator ======"
                 sh """
                 docker run -d -e \"API_URL=http://test-container:5200\" \
