@@ -137,24 +137,37 @@ pipeline{
                     steps{
                         echo "====== Deploying the backend ======"
                         sh "docker image tag ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${BACKEND}:latest"
-                        sh "docker push ${DOCKER_USERNAME}/${BACKEND}:latest"
-                        sh "docker push ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER"
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${BACKEND}:latest"
+                        }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER"
+                        }
+
                     }
                 }
                 stage("Deploying frontend"){
                     steps{
                         echo "====== Deploying the frontend ======"
                         sh "docker image tag ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${FRONTEND}:latest"
-                        sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:latest"
-                        sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:latest"
+                        }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
+                        }
                     }
                 }
                 stage("Deploying simulator"){
                     steps{
                         echo "====== Deploying the simulator ======"
                         sh "docker image tag ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${SIMULATOR}:latest"
-                        sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:latest"
-                        sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER"
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:latest"
+                        }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER"
+                        }
                     }
                 }
             }
