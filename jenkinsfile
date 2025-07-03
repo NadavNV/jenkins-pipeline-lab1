@@ -1,61 +1,146 @@
-def app_ip = ""
 pipeline{
     agent any
     environment{
-        APP_NAME = "movies-api"
-        MY_NAME = "nadav"
+        BACKEND = "smart-home-backend"
+        FRONTEND = "smart-home-dashboard"
+        SIMULATOR = "smart-home-simulator"
+        DOCKER_USERNAME = "nadavnv"
     }
     stages{
         stage('Clone'){
-            steps{
-                echo "====== Cloning movies-api repo ======"
-                sh "mkdir movies-api"
-                dir('movies-api'){
-                    git branch: 'main', url: 'https://github.com/devopsPRO27/movies-api'
+            parallel {
+                steps{
+                    echo "====== Cloning backend repo ======"
+                    sh "mkdir SmartHomeBackend"
+                    dir('SmartHomeBackend'){
+                        git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeBackend'
+                    }
                 }
+                steps{
+                    echo "====== Cloning frontend repo ======"
+                    sh "mkdir SmartHomeDashboard"
+                    dir('SmartHomeDashboard'){
+                        git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeDashboard'
+                    }
+                }
+                steps{
+                    echo "====== Cloning simulator repo ======"
+                    sh "mkdir SmartHomeSimulator"
+                    dir('SmartHomeSimulator'){
+                        git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeSimulator'
+                    }
+                }
+                // steps{
+                //     echo "====== Cloning config repo ======"
+                //     sh "mkdir SmartHomeConfig"
+                //     dir('SmartHomeBackend'){
+                //         git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeConfig'
+                //     }
+                // }
             }
         }
         stage('Build'){
-            steps{
-                echo "====== Building the app ======"
-                // Make sure that the container name is available
-                sh "docker stop ${MY_NAME}-${APP_NAME} || true"
-                sh "docker build -f ./movies/Dockerfile -t ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER} ."
+            parallel{
+                steps{
+                    echo "====== Building the backend ======"
+                    // Make sure that the container name is available
+                    sh "docker stop ${BACKEND} || true"
+                    dir('SmartHomeBackend'){
+                        sh "docker build -t ${DOCKER_USERNAME}/${BACKEND}:V1.${BUILD_NUMBER} ."
+                    }
+                }
+                steps{
+                    echo "====== Building the frontend ======"
+                    // Make sure that the container name is available
+                    sh "docker stop ${FRONTEND} || true"
+                    dir('SmartHomeFrontend'){
+                        sh "docker build -t ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
+                    }
+                }
+                steps{
+                    echo "====== Building the simulator ======"
+                    // Make sure that the container name is available
+                    sh "docker stop ${SIMULATOR} || true"
+                    dir('SmartHomeSimulator'){
+                        sh "docker build -t ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER} ."
+                    }
+                }
             }
         }
         stage('Test'){
             steps{
                 echo "====== Testing the app ======"
-                sh "docker run -d -p 80:80 --rm --name ${MY_NAME}-${APP_NAME} ${MY_NAME}/${APP_NAME}:V1.${BUILD_NUMBER}"
-                dir('movies/test'){
+                sh "docker network create test-net || true"
+                echo "====== Running the backend ======"
+                withCredentials([usernamePassword(credentialsId: 'mongo-credentials', passwordVariable: 'MONGO_PASS', usernameVariable: 'MONGO_USER')]) {
                     sh """
-                        export APP_HOST=\$(docker inspect --format='{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${MY_NAME}-${APP_NAME})
-                        export APP_PORT=80
-                        docker build -t ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER} .
-                        docker run --env APP_HOST --env APP_PORT --rm --name ${MY_NAME}-${APP_NAME}-test ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER}
+                    docker run -d -p 5200:5200 -e \"MONGO_USER=${MONGO_USER}\" -e \"MONGO_PASS=${MONGO_PASS}\" \
+                    --rm --network test-net --name test-container ${DOCKER_USERNAME}/${BACKEND}:V1.${BUILD_NUMBER}
                     """
                 }
+                echo "====== Testing the backend ======"
+                sh "sleep 20"
+                sh '''
+                    docker run --rm \
+                    --network test-net \
+                    -v /home/jenkins/.jenkins/workspace/smarthome_test:/app \
+                    -w /app \
+                    python:3.12-slim \
+                    /bin/sh -c "pip install requests && python3 SmartHomeBackend/Test/test.py"
+                '''
+                echo "====== Running the simulator ======"
+                sh """
+                docker run -d -e \"API_URL=http://test-container:5200\" \
+                --rm --network test-net --name ${SIMULATOR} ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER}
+                """
+                echo "====== Testing the simulator ======"
+                sh "sleep 20"
+                sh "docker exec ${SIMULATOR} cat status | grep ready"
+                echo "====== Running the frontend ======"
+                sh """
+                docker run -d -e \"VITE_API_URL=http://test-container:5200\" \
+                --rm --network test-net --name ${FRONTEND} ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}
+                """
+                echo "====== Testing the frontend ======"
+                sh "sleep 20"
+                sh "docker exec ${SIMULATOR} curl http://${FRONTEND}:3001 | grep \"Data\""
             }
             post{
                 always{
-                    // Remove the testing container
-                    sh "docker rm ${MY_NAME}-${APP_NAME}-test || true"
-                    // Remove the test image
-                    sh "docker rm -f ${MY_NAME}/${APP_NAME}-test:V1.${BUILD_NUMBER} || true"
+                    sh "docker rm -f test-container || true"
+                    sh "docker rm -f ${SIMULATOR} || true"
+                    sh "docker rm -f ${FRONTEND} || true"
+                    sh "docker network rm test-net || true"
                 }
             }
         }
-        
-        stage('Deploy'){
+        stage("Docker login"){
             steps{
-                echo "====== Deploying the app ======"
-                withCredentials([usernamePassword(credentialsId: 'nadav-dockerhub-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-                    sh '''
-                        docker logout
-                        echo $PASS | docker login -u $USER --password-stdin
-                        docker image tag $MY_NAME/$APP_NAME:V1.$BUILD_NUMBER $USER/$APP_NAME:V1.$BUILD_NUMBER
-                        docker push $USER/$APP_NAME:V1.$BUILD_NUMBER
-                    '''
+                sh "docker logout"
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    sh "echo $PASS | docker login -u $USER --password-stdin"
+                }
+            }
+        }
+        stage('Deploy'){
+            parallel{
+                steps{
+                    echo "====== Deploying the backend ======"
+                    sh "docker image tag ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${BACKEND}:latest"
+                    sh "docker push ${DOCKER_USERNAME}/${BACKEND}:latest"
+                    sh "docker push ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER"
+                }
+                steps{
+                    echo "====== Deploying the frontend ======"
+                    sh "docker image tag ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${FRONTEND}:latest"
+                    sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:latest"
+                    sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
+                }
+                steps{
+                    echo "====== Deploying the simulator ======"
+                    sh "docker image tag ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${SIMULATOR}:latest"
+                    sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:latest"
+                    sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER"
                 }
             }
         }
@@ -65,8 +150,10 @@ pipeline{
             sh "docker logout"
             // Clean up workspace
             sh "rm -fr *"
-            // Remove the app container
-            sh "docker stop ${MY_NAME}-${APP_NAME} || true"
+            // Remove the containers
+            sh "docker stop test-container || true"
+            sh "docker stop ${FRONTEND} || true"
+            sh "docker stop ${SIMULATOR} || true"
             // Remove images
             sh "docker rmi -f `docker image ls | egrep \"^nadav\" | awk '{print\$3}'`"
         }
