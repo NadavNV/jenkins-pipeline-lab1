@@ -166,6 +166,15 @@ pipeline{
                 }
             }
         }
+        stage("Rebuild frontend"){
+            steps{
+                sh "docker stop ${FRONTEND} || true"
+                sh "docker rmi ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
+                dir('SmartHomeDashboard'){
+                    sh "docker build -t${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
+                }
+            }
+        }
         stage('Deploy'){
             parallel{
                 stage("Deploying backend"){
