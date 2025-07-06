@@ -1,7 +1,9 @@
 pipeline{
     agent any
     environment{
-        BACKEND = "smart-home-backend"
+        FLASK = "smart-home-backend-flask"
+        NGINX = "smart-home-backend-nginx"
+        GRAFANA = "smart-home-grafana"
         FRONTEND = "smart-home-dashboard"
         SIMULATOR = "smart-home-simulator"
         DOCKER_USERNAME = "nadavnv"
@@ -41,6 +43,15 @@ pipeline{
                         }
                     }
                 }
+                stage("Cloning config"){
+                    steps{
+                        echo "====== Cloning config repo ======"
+                        sh "mkdir SmartHomeConfig"
+                        dir('SmartHomeConfig'){
+                            git branch: 'main', url: 'https://github.com/NadavNV/SmartHomeConfig'
+                        }
+                    }
+                }
             }
         }
         stage('Build'){
@@ -48,10 +59,12 @@ pipeline{
                 stage("Buidling backend"){
                     steps{
                         echo "====== Building the backend ======"
-                        // Make sure that the container name is available
-                        sh "docker stop ${BACKEND} || true"
+                        // Make sure that the container names are available
+                        sh "docker stop ${FLASK} || true"
+                        sh "docker stop ${NGINX}"
                         dir('SmartHomeBackend'){
-                            sh "docker build -t ${DOCKER_USERNAME}/${BACKEND}:V1.${BUILD_NUMBER} ."
+                            sh "docker build -f flask.Dockerfile -t ${DOCKER_USERNAME}/${FLASK}:V1.${BUILD_NUMBER} ."
+                            sh "docker build -f nginx.Dockerfile -t ${DOCKER_USERNAME}/${NGINX}:V1.${BUILD_NUMBER} ."
                         }
                     }
                 }
@@ -61,7 +74,10 @@ pipeline{
                         // Make sure that the container name is available
                         sh "docker stop ${FRONTEND} || true"
                         dir('SmartHomeDashboard'){
-                            sh "docker build -t ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
+                            sh """
+                            docker build --build-arg VITE_API_URL=http://localhost:5200 -t \
+                            ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} .
+                            """
                         }
                     }
                 }
@@ -75,6 +91,16 @@ pipeline{
                         }
                     }
                 }
+                stage("Building grafana"){
+                    steps{
+                        echo "====== Building grafana ======"
+                        // Make sure that the container name is available
+                        sh "docker stop ${GRAFANA} || true"
+                        dir('SmartHomeConfig/monitoring/grafana'){
+                            sh "docker build -t ${DOCKER_USERNAME}/${GRAFANA}:V1.${BUILD_NUMBER} ."
+                        }
+                    }
+                }
             }
         }
         stage('Test'){
@@ -84,44 +110,52 @@ pipeline{
                 echo "====== Running the backend ======"
                 withCredentials([usernamePassword(credentialsId: 'mongo-credentials', passwordVariable: 'MONGO_PASS', usernameVariable: 'MONGO_USER')]) {
                     sh """
-                    docker run -d -p 5200:5200 -e \"MONGO_USER=${MONGO_USER}\" -e \"MONGO_PASS=${MONGO_PASS}\" \
-                    --rm --network test-net --name test-container ${DOCKER_USERNAME}/${BACKEND}:V1.${BUILD_NUMBER}
+                    docker run -d -p 80:80 -e \"MONGO_USER=${MONGO_USER}\" -e \"MONGO_PASS=${MONGO_PASS}\" \
+                    --rm --network host --name ${FLASK} ${DOCKER_USERNAME}/${FLASK}:V1.${BUILD_NUMBER}
                     """
                 }
-                // Verify container was created
-                sh "docker logs test-container || true"
-                sh "docker ps -a"
+                sh """
+                docker run -d -p 5200:5200 --rm --network host --name ${NGINX} \
+                ${DOCKER_USERNAME}/${NGINX}:V1.${BUILD_NUMBER}
+                """
                 echo "====== Testing the backend ======"
+                sh "for i in {1..10}; do curl http://localhost:80/ready && break || sleep 5; done"
                 sh "for i in {1..10}; do curl http://localhost:5200/ready && break || sleep 5; done"
                 echo "====== Running the simulator ======"
                 sh """
-                docker run -d -e \"API_URL=http://test-container:5200\" \
-                --rm --network test-net --name ${SIMULATOR} ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER}
+                docker run -d -e \"API_URL=http://localhost:5200\" \
+                --rm --network host --name ${SIMULATOR} ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER}
                 """
-                // Verify container was created
-                sh "docker logs ${SIMULATOR} || true"
-                sh "docker ps -a"
                 echo "====== Testing the simulator ======"
                 sh "for i in {1..10}; do docker exec ${SIMULATOR} cat status | grep ready && break || sleep 5; done"
                 echo "====== Running the frontend ======"
                 sh """
-                docker run -d -e \"VITE_API_URL=http://test-container:5200\" \
-                --rm --network test-net --name ${FRONTEND} ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}
+                docker run -d --rm --network host --name ${FRONTEND} \
+                ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}
                 """
-                // Verify container was created
-                sh "docker logs ${FRONTEND} || true"
-                sh "docker ps -a"
                 echo "====== Testing the frontend ======"
-                sh "for i in {1..10}; do docker exec ${SIMULATOR} curl http://${FRONTEND}:3001 | grep \"Data\" && break || sleep 5; done"
+                sh """bash -c '
+                for i in {1..10}; do
+                (curl http://localhost:3001 && docker exec ${FRONTEND} curl http://localhost:5200/ready) && break || sleep 5
+                done'
+                """
+                echo "====== Running grafana ======"
+                sh """
+                docker run -d --rm --network host --name ${GRAFANA} \
+                ${DOCKER_USERNAME}/${GRAFANA}:V1.${BUILD_NUMBER}
+                """
+                echo "====== Testing grafana ======"
+                sh "for i in {1..10}; do curl http://localhost:3000/api/health && break || sleep 5; done"
             }
             post{
                 always{
-                    sh "docker rm -f test-container || true"
+                    sh "docker rm -f ${FLASK} || true"
+                    sh "docker rm -f ${NGINX} || true"
                     sh "docker rm -f ${SIMULATOR} || true"
                     sh "docker rm -f ${FRONTEND} || true"
-                    sh "docker network rm test-net || true"
+                    sh "docker rm -f ${GRAFANA} || true"
                 }
-            }
+            }    
         }
         stage("Docker login"){
             steps{
@@ -136,14 +170,20 @@ pipeline{
                 stage("Deploying backend"){
                     steps{
                         echo "====== Deploying the backend ======"
-                        sh "docker image tag ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${BACKEND}:latest"
+                        sh "docker image tag ${DOCKER_USERNAME}/${FLASK}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${FLASK}:latest"
+                        sh "docker image tag ${DOCKER_USERNAME}/${NGINX}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${NGINX}:latest"
                         retry(4){
-                            sh "docker push ${DOCKER_USERNAME}/${BACKEND}:latest"
+                            sh "docker push ${DOCKER_USERNAME}/${NGINX}:latest"
                         }
                         retry(4){
-                            sh "docker push ${DOCKER_USERNAME}/${BACKEND}:V1.$BUILD_NUMBER"
+                            sh "docker push ${DOCKER_USERNAME}/${FLASK}:latest"
                         }
-
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${FLASK}:V1.$BUILD_NUMBER"
+                        }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${NGINX}:V1.$BUILD_NUMBER"
+                        }
                     }
                 }
                 stage("Deploying frontend"){
@@ -170,6 +210,18 @@ pipeline{
                         }
                     }
                 }
+                stage("Deploying grafana"){
+                    steps{
+                        echo "====== Deploying grafana ======"
+                        sh "docker image tag ${DOCKER_USERNAME}/${GRAFANA}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${GRAFANA}:latest"
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${GRAFANA}:latest"
+                        }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${GRAFANA}:V1.$BUILD_NUMBER"
+                        }
+                    }
+                }
             }
         }
     }
@@ -178,11 +230,13 @@ pipeline{
             // Clean up workspace
             sh "rm -fr *"
             // Remove the containers
-            sh "docker stop test-container || true"
+            sh "docker stop ${FLASK} || true"
+            sh "docker stop ${NGINX} || true"
             sh "docker stop ${FRONTEND} || true"
             sh "docker stop ${SIMULATOR} || true"
+            sh "docker stop ${GRAFANA} || true"
             // Remove images
-            sh "docker rmi -f `docker image ls | egrep \"^nadav\" | awk '{print\$3}'` || true"
+            sh "docker rmi -f \$(docker image ls | egrep '^nadav' | awk '{print \$3}') || true"
             sh "docker logout || true"
         }
     }
