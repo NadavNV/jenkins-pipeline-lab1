@@ -13,7 +13,6 @@ pipeline{
             steps{
                 // Make sure docker is available
                 sh "docker ps"
-                sh "git config --global --add safe.directory '${env.WORKSPACE}'"
             }
         }
         stage('Clone'){
@@ -63,7 +62,7 @@ pipeline{
                         echo "====== Building the backend ======"
                         // Make sure that the container names are available
                         sh "docker stop ${FLASK} || true"
-                        sh "docker stop ${NGINX}"
+                        sh "docker stop ${NGINX} || true"
                         dir('SmartHomeBackend'){
                             sh "docker build -f flask.Dockerfile -t ${DOCKER_USERNAME}/${FLASK}:V1.${BUILD_NUMBER} ."
                             sh "docker build -f nginx.Dockerfile -t ${DOCKER_USERNAME}/${NGINX}:V1.${BUILD_NUMBER} ."
