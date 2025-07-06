@@ -9,11 +9,11 @@ pipeline{
         DOCKER_USERNAME = "nadavnv"
     }
     stages{
-        stage("Test docker") {
+        stage("Prepare") {
             steps{
+                // Make sure docker is available
                 sh "docker ps"
-                // Intentional fail
-                sh "curl http://localhost:3000"
+                sh "git config --global --add safe.directory '${env.WORKSPACE}'"
             }
         }
         stage('Clone'){
