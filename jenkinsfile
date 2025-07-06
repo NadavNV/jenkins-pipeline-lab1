@@ -12,6 +12,8 @@ pipeline{
         stage("Test docker") {
             steps{
                 sh "docker ps"
+                // Intentional fail
+                sh "curl http://localhost:3000"
             }
         }
         stage('Clone'){
