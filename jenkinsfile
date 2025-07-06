@@ -229,19 +229,22 @@ pipeline{
     }
     post{
         always{
-            node(label: 'built-in'){
-                // Clean up workspace
-                sh "rm -fr *"
-                // Remove the containers
-                sh "docker stop ${FLASK} || true"
-                sh "docker stop ${NGINX} || true"
-                sh "docker stop ${FRONTEND} || true"
-                sh "docker stop ${SIMULATOR} || true"
-                sh "docker stop ${GRAFANA} || true"
-                // Remove images
-                sh "docker rmi -f \$(docker image ls | egrep '^nadav' | awk '{print \$3}') || true"
-                sh "docker logout || true"
-            }
+            // Clean up workspace
+            cleanWs(
+                cleanWhenNotBuilt: false,
+                deleteDirs: true,
+                disableDeferredWipeout: true,
+                notFailBuild: true
+            )
+            // Remove the containers
+            sh "docker stop ${FLASK} || true"
+            sh "docker stop ${NGINX} || true"
+            sh "docker stop ${FRONTEND} || true"
+            sh "docker stop ${SIMULATOR} || true"
+            sh "docker stop ${GRAFANA} || true"
+            // Remove images
+            sh "docker rmi -f \$(docker image ls | egrep '^nadav' | awk '{print \$3}') || true"
+            sh "docker logout || true"
         }
     }
 }
