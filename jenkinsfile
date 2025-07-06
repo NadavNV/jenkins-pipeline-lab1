@@ -57,7 +57,7 @@ pipeline{
         }
         stage('Build'){
             parallel{
-                stage("Buidling backend"){
+                stage("Building backend"){
                     steps{
                         echo "====== Building the backend ======"
                         // Make sure that the container names are available
@@ -104,49 +104,68 @@ pipeline{
                 }
             }
         }
-        stage('Test'){
+        stage('Test print'){
             steps{
                 echo "====== Testing the app ======"
-                sh "docker network create test-net || true"
+            }
+        }
+        stage("Run the backend"){
+            steps{
                 echo "====== Running the backend ======"
                 withCredentials([usernamePassword(credentialsId: 'mongo-credentials', passwordVariable: 'MONGO_PASS', usernameVariable: 'MONGO_USER')]) {
                     sh """
                     docker run -d -p 80:80 -e \"MONGO_USER=${MONGO_USER}\" -e \"MONGO_PASS=${MONGO_PASS}\" \
-                    --rm --network host --name ${FLASK} ${DOCKER_USERNAME}/${FLASK}:V1.${BUILD_NUMBER}
+                    --network host --name ${FLASK} ${DOCKER_USERNAME}/${FLASK}:V1.${BUILD_NUMBER}
                     """
                 }
                 sh """
-                docker run -d -p 5200:5200 --rm --network host --name ${NGINX} \
+                docker run -d -p 5200:5200 --network host --name ${NGINX} \
                 ${DOCKER_USERNAME}/${NGINX}:V1.${BUILD_NUMBER}
                 """
                 echo "====== Testing the backend ======"
                 sh "for i in {1..10}; do curl http://localhost:80/ready && break || sleep 5; done"
                 sh "for i in {1..10}; do curl http://localhost:5200/ready && break || sleep 5; done"
-                echo "====== Running the simulator ======"
-                sh """
-                docker run -d -e \"API_URL=http://localhost:5200\" \
-                --rm --network host --name ${SIMULATOR} ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER}
-                """
-                echo "====== Testing the simulator ======"
-                sh "for i in {1..10}; do docker exec ${SIMULATOR} cat status | grep ready && break || sleep 5; done"
-                echo "====== Running the frontend ======"
-                sh """
-                docker run -d --rm --network host --name ${FRONTEND} \
-                ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}
-                """
-                echo "====== Testing the frontend ======"
-                sh """bash -c '
-                for i in {1..10}; do
-                (curl http://localhost:3001 && docker exec ${FRONTEND} curl http://localhost:5200/ready) && break || sleep 5
-                done'
-                """
-                echo "====== Running grafana ======"
-                sh """
-                docker run -d --rm --network host --name ${GRAFANA} \
-                ${DOCKER_USERNAME}/${GRAFANA}:V1.${BUILD_NUMBER}
-                """
-                echo "====== Testing grafana ======"
-                sh "for i in {1..10}; do curl http://localhost:3000/api/health && break || sleep 5; done"
+            }
+        }
+        stage("Testing dependencies"){
+            parallel{
+                stage("Testing the simulator"){
+                    steps{
+                        echo "====== Running the simulator ======"
+                        sh """
+                        docker run -d -e \"API_URL=http://localhost:5200\" \
+                        --network host --name ${SIMULATOR} ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER}
+                        """
+                        echo "====== Testing the simulator ======"
+                        sh "for i in {1..10}; do docker exec ${SIMULATOR} cat status | grep ready && break || sleep 5; done"
+                    }
+                }
+                stage("Testing the frontend"){
+                    steps{
+                        echo "====== Running the frontend ======"
+                        sh """
+                        docker run -d --network host --name ${FRONTEND} \
+                        ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}
+                        """
+                        echo "====== Testing the frontend ======"
+                        sh """bash -c '
+                        for i in {1..10}; do
+                        (curl http://localhost:3001 && docker exec ${FRONTEND} curl http://localhost:5200/ready) && break || sleep 5
+                        done'
+                        """
+                    }
+                }
+                stage("Testing grafana"){
+                    steps{
+                        echo "====== Running grafana ======"
+                        sh """
+                        docker run -d --rm --network host --name ${GRAFANA} \
+                        ${DOCKER_USERNAME}/${GRAFANA}:V1.${BUILD_NUMBER}
+                        """
+                        echo "====== Testing grafana ======"
+                        sh "for i in {1..10}; do curl http://localhost:3000/api/health && break || sleep 5; done"
+                    }
+                }
             }
             post{
                 always{
@@ -156,7 +175,7 @@ pipeline{
                     sh "docker rm -f ${FRONTEND} || true"
                     sh "docker rm -f ${GRAFANA} || true"
                 }
-            }    
+            } 
         }
         stage("Docker login"){
             steps{
@@ -171,7 +190,7 @@ pipeline{
                 sh "docker stop ${FRONTEND} || true"
                 sh "docker rmi ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
                 dir('SmartHomeDashboard'){
-                    sh "docker build -t${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
+                    sh "docker build -t ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
                 }
             }
         }
@@ -250,6 +269,11 @@ pipeline{
             sh "docker stop ${FRONTEND} || true"
             sh "docker stop ${SIMULATOR} || true"
             sh "docker stop ${GRAFANA} || true"
+            sh "docker rm -f ${FLASK} || true"
+            sh "docker rm -f ${NGINX} || true"
+            sh "docker rm -f ${FRONTEND} || true"
+            sh "docker rm -f ${SIMULATOR} || true"
+            sh "docker rm -f ${GRAFANA} || true"
             // Remove images
             sh "docker rmi -f \$(docker image ls | egrep '^nadav' | awk '{print \$3}') || true"
             sh "docker logout || true"
