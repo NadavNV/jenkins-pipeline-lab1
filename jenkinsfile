@@ -149,7 +149,7 @@ pipeline{
                         ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}
                         """
                         echo "====== Testing the frontend ======"
-                        // Temporarily disable
+                        // Temporarily disable, takes too long
                         
                         // sh """bash -c '
                         // for i in {1..10}; do
@@ -210,12 +210,6 @@ pipeline{
                         retry(4){
                             sh "docker push ${DOCKER_USERNAME}/${FLASK}:latest"
                         }
-                        retry(4){
-                            sh "docker push ${DOCKER_USERNAME}/${FLASK}:V1.$BUILD_NUMBER"
-                        }
-                        retry(4){
-                            sh "docker push ${DOCKER_USERNAME}/${NGINX}:V1.$BUILD_NUMBER"
-                        }
                     }
                 }
                 stage("Deploying frontend"){
@@ -224,9 +218,6 @@ pipeline{
                         sh "docker image tag ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${FRONTEND}:latest"
                         retry(4){
                             sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:latest"
-                        }
-                        retry(4){
-                            sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
                         }
                     }
                 }
@@ -237,9 +228,6 @@ pipeline{
                         retry(4){
                             sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:latest"
                         }
-                        retry(4){
-                            sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:V1.$BUILD_NUMBER"
-                        }
                     }
                 }
                 stage("Deploying grafana"){
@@ -248,9 +236,6 @@ pipeline{
                         sh "docker image tag ${DOCKER_USERNAME}/${GRAFANA}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${GRAFANA}:latest"
                         retry(4){
                             sh "docker push ${DOCKER_USERNAME}/${GRAFANA}:latest"
-                        }
-                        retry(4){
-                            sh "docker push ${DOCKER_USERNAME}/${GRAFANA}:V1.$BUILD_NUMBER"
                         }
                     }
                 }
