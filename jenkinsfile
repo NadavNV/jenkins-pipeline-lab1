@@ -188,15 +188,6 @@ pipeline{
                 }
             }
         }
-        // stage("Rebuild frontend"){
-        //     steps{
-        //         sh "docker stop ${FRONTEND} || true"
-        //         sh "docker rmi ${DOCKER_USERNAME}/${FRONTEND}:V1.$BUILD_NUMBER"
-        //         dir('SmartHomeDashboard'){
-        //             sh "docker build -t ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER} ."
-        //         }
-        //     }
-        // }
         stage('Deploy'){
             parallel{
                 stage("Deploying backend"){
@@ -208,7 +199,13 @@ pipeline{
                             sh "docker push ${DOCKER_USERNAME}/${NGINX}:latest"
                         }
                         retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${NGINX}:V1.${BUILD_NUMBER}"
+                        }
+                        retry(4){
                             sh "docker push ${DOCKER_USERNAME}/${FLASK}:latest"
+                        }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${FLASK}:V1.${BUILD_NUMBER}"
                         }
                     }
                 }
@@ -219,6 +216,9 @@ pipeline{
                         retry(4){
                             sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:latest"
                         }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${FRONTEND}:V1.${BUILD_NUMBER}"
+                        }
                     }
                 }
                 stage("Deploying simulator"){
@@ -228,6 +228,9 @@ pipeline{
                         retry(4){
                             sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:latest"
                         }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${SIMULATOR}:V1.${BUILD_NUMBER}"
+                        }
                     }
                 }
                 stage("Deploying grafana"){
@@ -236,6 +239,9 @@ pipeline{
                         sh "docker image tag ${DOCKER_USERNAME}/${GRAFANA}:V1.$BUILD_NUMBER ${DOCKER_USERNAME}/${GRAFANA}:latest"
                         retry(4){
                             sh "docker push ${DOCKER_USERNAME}/${GRAFANA}:latest"
+                        }
+                        retry(4){
+                            sh "docker push ${DOCKER_USERNAME}/${GRAFANA}:V1.${BUILD_NUMBER}"
                         }
                     }
                 }
